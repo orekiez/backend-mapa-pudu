@@ -1,0 +1,166 @@
+/* --- 1. FONDO Y RESET --- */
+body, html, #root {
+  height: 100%;
+  margin: 0;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+.map-container {
+  height: 100vh;
+  width: 100vw;
+  position: relative;
+  z-index: 1;
+}
+
+/* --- 2. EL PIN (MARCADOR) CORPORATIVO --- */
+/* Dibujamos la forma de gota usando CSS puro */
+.marker-pin {
+  width: 40px;
+  height: 40px;
+  border-radius: 50% 50% 50% 0;
+  background: #3ebf57; /* Color por defecto */
+  position: absolute;
+  transform: rotate(-45deg); /* Giramos para que la punta quede abajo */
+  left: 50%;
+  top: 50%;
+  margin: -20px 0 0 -20px;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.3); /* Sombra elegante */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); /* Efecto rebote */
+}
+
+/* El círculo blanco dentro del pin */
+.marker-pin::after {
+    content: '';
+    width: 24px;
+    height: 24px;
+    margin: 8px 0 0 8px;
+    background: #fff;
+    position: absolute;
+    border-radius: 50%;
+}
+
+/* El icono dentro del pin (lo enderezamos porque el pin está girado) */
+.marker-icon {
+  transform: rotate(45deg); 
+  z-index: 2;
+  font-size: 16px;
+  color: #333;
+  margin-left: 5px; /* Ajuste fino */
+  margin-top: 4px;
+}
+
+/* Efecto Hover */
+.custom-div-icon:hover .marker-pin {
+  transform: rotate(-45deg) scale(1.1) translateY(-5px);
+  cursor: pointer;
+  z-index: 999;
+}
+
+/* --- 3. PANEL DE CONTROL FLOTANTE (HUD) --- */
+.dashboard-panel {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 1000; /* Encima del mapa */
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px); /* Efecto vidrio esmerilado de Apple/Windows */
+  padding: 20px;
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  width: 320px;
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.brand-title {
+  font-weight: 800;
+  color: #1a1a1a;
+  margin-bottom: 5px;
+  letter-spacing: -0.5px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+/* Botones de Filtro "Pill" (Pastilla) */
+.filter-pills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-btn {
+  border: 1px solid #e0e0e0;
+  background: white;
+  border-radius: 20px;
+  padding: 6px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.filter-btn:hover {
+  background: #f8f9fa;
+  transform: translateY(-1px);
+}
+
+.filter-btn.active {
+  background: #1a1a1a;
+  color: white;
+  border-color: #1a1a1a;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+}
+
+/* Colores específicos para botones activos */
+.filter-btn.vidrio.active { background: #198754; border-color: #198754; }
+.filter-btn.plastico.active { background: #0dcaf0; border-color: #0dcaf0; }
+.filter-btn.carton.active { background: #ffc107; border-color: #ffc107; color: #333; }
+
+/* --- 4. BOTÓN GPS --- */
+.gps-fab {
+  position: absolute;
+  bottom: 30px;
+  right: 30px;
+  z-index: 1000;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: white;
+  border: none;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: #333;
+  transition: transform 0.2s;
+}
+
+.gps-fab:hover {
+  transform: scale(1.1);
+  background: #f0f0f0;
+}
+
+/* --- 5. POPUP ELEGANTE --- */
+.leaflet-popup-content-wrapper {
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+}
+.leaflet-popup-content {
+  margin: 15px;
+}
