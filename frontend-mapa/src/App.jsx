@@ -6,7 +6,7 @@ import axios from 'axios';
 import './App.css';
 
 // URL DE TU API (Asegúrate de que sea la correcta, local o nube)
-const API_URL = 'http://127.0.0.1:8000/api/puntos/';
+const API_URL = 'https://backend-mapa-pudu-production.up.railway.app/api/puntos/';
 
 // --- SISTEMA DE ICONOS ---
 const tiposResiduo = {
@@ -52,15 +52,27 @@ function App() {
   const cargarPuntos = async () => {
     try {
       const res = await axios.get(API_URL);
-      setPuntos(res.data);
-    } catch (error) { console.error("Error cargando:", error); }
+      console.log("🔍 LO QUE LLEGÓ DE RAILWAY:", res.data); // <--- ESTO ES LA CLAVE
+      
+      // Si es una lista, la guardamos. Si no, guardamos lista vacía.
+      if (Array.isArray(res.data)) {
+        setPuntos(res.data);
+      } else {
+        console.error("⚠️ Error: Railway no devolvió una lista. Devolvió esto:", res.data);
+        setPuntos([]); 
+      }
+    } catch (error) {
+      console.error("❌ Error conectando:", error);
+      setPuntos([]); 
+    }
   };
 
-  useEffect(() => { cargarPuntos(); }, []);
-
+// Nos aseguramos que sea un array para que no explote el .map
+  const listaSegura = Array.isArray(puntos) ? puntos : [];
+  
   const puntosVisibles = filtro === 'Todos' 
-      ? puntos 
-      : puntos.filter(p => p.tipo_residuo === filtro);
+      ? listaSegura 
+      : listaSegura.filter(p => p.tipo_residuo === filtro);
 
   // --- LÓGICA INTELIGENTE DE GUARDADO (CREAR vs EDITAR) ---
   const guardarPunto = async () => {
