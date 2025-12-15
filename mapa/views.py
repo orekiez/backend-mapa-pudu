@@ -11,7 +11,7 @@ class PuntoViewSet(viewsets.ModelViewSet):
     # AL CREAR
     def perform_create(self, serializer):
         instancia = serializer.save()
-        self.verificar_alerta(instancia)
+        # self.verificar_alerta(instancia)
 
     # AL MODIFICAR
     def perform_update(self, serializer):
@@ -29,7 +29,7 @@ class PuntoViewSet(viewsets.ModelViewSet):
             instancia = serializer.save()
             
         # Siempre verificamos si hay que mandar correo
-        self.verificar_alerta(instancia)
+        #self.verificar_alerta(instancia)
 
     # SISTEMA DE NOTIFICACIONES (GMAIL)
     def verificar_alerta(self, punto):
