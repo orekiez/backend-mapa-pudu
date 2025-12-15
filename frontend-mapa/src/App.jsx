@@ -5,7 +5,7 @@ import L from 'leaflet';
 import axios from 'axios';
 import './App.css';
 
-// URL DE TU API (Asegúrate de que sea la correcta, local o nube)
+// URL DE TU API (Asegúrate que tenga https:// al principio)
 const API_URL = 'https://backend-mapa-pudu-production.up.railway.app/api/puntos/';
 
 // --- SISTEMA DE ICONOS ---
@@ -36,9 +36,8 @@ function App() {
   const [filtro, setFiltro] = useState('Todos');
   const [showModal, setShowModal] = useState(false);
   
-  // Estado del formulario (ahora incluye ID para saber si editamos)
   const [formulario, setFormulario] = useState({ 
-      id: null, // Si es null, es nuevo. Si tiene número, es edición.
+      id: null, 
       nombre: '', 
       latitud: 0, 
       longitud: 0, 
@@ -48,56 +47,66 @@ function App() {
   
   const [miUbicacion, setMiUbicacion] = useState(null);
 
-  // Cargar datos
+  // --- CARGAR DATOS (BLINDADO) ---
   const cargarPuntos = async () => {
     try {
       const res = await axios.get(API_URL);
-      console.log("🔍 LO QUE LLEGÓ DE RAILWAY:", res.data); // <--- ESTO ES LA CLAVE
-      
-      // Si es una lista, la guardamos. Si no, guardamos lista vacía.
       if (Array.isArray(res.data)) {
         setPuntos(res.data);
       } else {
-        console.error("⚠️ Error: Railway no devolvió una lista. Devolvió esto:", res.data);
+        console.error("La API no devolvió una lista:", res.data);
         setPuntos([]); 
       }
     } catch (error) {
-      console.error("❌ Error conectando:", error);
+      console.error("Error cargando mapa:", error);
       setPuntos([]); 
     }
   };
 
-// Nos aseguramos que sea un array para que no explote el .map
+  useEffect(() => { cargarPuntos(); }, []);
+
   const listaSegura = Array.isArray(puntos) ? puntos : [];
-  
   const puntosVisibles = filtro === 'Todos' 
       ? listaSegura 
       : listaSegura.filter(p => p.tipo_residuo === filtro);
 
-  // --- LÓGICA INTELIGENTE DE GUARDADO (CREAR vs EDITAR) ---
+  // --- GUARDAR (CREAR O EDITAR) ---
   const guardarPunto = async () => {
     try {
       if (formulario.id) {
-        // MODO EDICIÓN (PUT) -> Actualizamos el existente
-        // Agregamos el slash final '/' que Django a veces exige
         await axios.put(`${API_URL}${formulario.id}/`, formulario);
       } else {
-        // MODO CREACIÓN (POST) -> Creamos uno nuevo
         await axios.post(API_URL, formulario);
       }
-      
       setShowModal(false);
-      cargarPuntos(); // Recargamos para ver la nueva predicción
+      cargarPuntos();
     } catch (error) {
       console.error("Error guardando:", error);
       alert("Error al guardar. Revisa la consola.");
     }
   };
 
-  // Función para abrir el modal en MODO EDICIÓN
+  // --- NUEVA FUNCIÓN: ELIMINAR ---
+  const eliminarPunto = async () => {
+    if (!formulario.id) return; // Seguridad
+
+    const confirmar = window.confirm("⚠️ ¿Estás seguro de que quieres ELIMINAR este punto permanentemente?");
+    
+    if (confirmar) {
+        try {
+            await axios.delete(`${API_URL}${formulario.id}/`);
+            setShowModal(false); // Cerramos el modal
+            cargarPuntos();      // Recargamos el mapa
+        } catch (error) {
+            console.error("Error eliminando:", error);
+            alert("No se pudo eliminar el punto.");
+        }
+    }
+  };
+
   const abrirEdicion = (punto) => {
     setFormulario({
-      id: punto.id, // ¡Importante! Guardamos el ID
+      id: punto.id,
       nombre: punto.nombre,
       latitud: punto.latitud,
       longitud: punto.longitud,
@@ -107,12 +116,11 @@ function App() {
     setShowModal(true);
   };
 
-  // Función para abrir el modal en MODO CREACIÓN (Click en mapa vacío)
   const DetectorClics = () => {
     useMapEvents({
       click(e) {
         setFormulario({ 
-          id: null, // Sin ID = Nuevo
+          id: null, 
           nombre: '', 
           latitud: e.latlng.lat, 
           longitud: e.latlng.lng, 
@@ -185,7 +193,6 @@ function App() {
               <div style={{ minWidth: '180px' }}>
                 <div className="d-flex justify-content-between align-items-start mb-2">
                     <h6 className="fw-bold mb-0">{p.nombre}</h6>
-                    {/* BOTÓN DE EDICIÓN (LÁPIZ) */}
                     <button 
                         className="btn btn-sm btn-outline-secondary py-0 px-1" 
                         onClick={() => abrirEdicion(p)}
@@ -213,7 +220,6 @@ function App() {
                   className="mb-3"
                 />
                 
-                {/* Botón rápido para actualizar */}
                 <div className="d-grid">
                     <Button variant="dark" size="sm" onClick={() => abrirEdicion(p)}>
                         Actualizar Estado
@@ -231,11 +237,11 @@ function App() {
         )}
       </MapContainer>
 
-      {/* MODAL INTELIGENTE (Sirve para Crear y Editar) */}
+      {/* MODAL (CREAR / EDITAR / ELIMINAR) */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static">
         <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="h5 fw-bold">
-            {formulario.id ? '✏️ Actualizar Punto' : '📍 Nuevo Punto'}
+            {formulario.id ? '✏️ Gestionar Punto' : '📍 Nuevo Punto'}
           </Modal.Title>
         </Modal.Header>
         <Modal.Body>
@@ -281,11 +287,22 @@ function App() {
             </Form.Group>
           </Form>
         </Modal.Body>
-        <Modal.Footer className="border-0 pt-0">
-          <Button variant="light" onClick={() => setShowModal(false)}>Cancelar</Button>
-          <Button variant="dark" onClick={guardarPunto} className="px-4">
-              {formulario.id ? 'Guardar Cambios' : 'Crear Punto'}
-          </Button>
+        <Modal.Footer className="border-0 pt-0 d-flex justify-content-between">
+          
+          {/* BOTÓN ELIMINAR (Solo visible si el punto ya existe, o sea tiene ID) */}
+          {formulario.id && (
+              <Button variant="danger" onClick={eliminarPunto}>
+                  <i className="bi bi-trash"></i> Eliminar
+              </Button>
+          )}
+
+          <div className="d-flex gap-2">
+            <Button variant="light" onClick={() => setShowModal(false)}>Cancelar</Button>
+            <Button variant="dark" onClick={guardarPunto} className="px-4">
+                Guardar
+            </Button>
+          </div>
+          
         </Modal.Footer>
       </Modal>
     </div>
