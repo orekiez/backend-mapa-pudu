@@ -5,7 +5,7 @@ import L from 'leaflet';
 import axios from 'axios';
 import './App.css';
 
-// URL DE TU API (Asegúrate que tenga https:// al principio)
+// URL DE TU API (Backend en Railway)
 const API_URL = 'https://backend-mapa-pudu-production.up.railway.app/api/puntos/';
 
 // --- SISTEMA DE ICONOS ---
@@ -47,14 +47,13 @@ function App() {
   
   const [miUbicacion, setMiUbicacion] = useState(null);
 
-  // --- CARGAR DATOS (BLINDADO) ---
+  // --- CARGAR DATOS ---
   const cargarPuntos = async () => {
     try {
       const res = await axios.get(API_URL);
       if (Array.isArray(res.data)) {
         setPuntos(res.data);
       } else {
-        console.error("La API no devolvió una lista:", res.data);
         setPuntos([]); 
       }
     } catch (error) {
@@ -70,7 +69,7 @@ function App() {
       ? listaSegura 
       : listaSegura.filter(p => p.tipo_residuo === filtro);
 
-  // --- GUARDAR (CREAR O EDITAR) ---
+  // --- GUARDAR ---
   const guardarPunto = async () => {
     try {
       if (formulario.id) {
@@ -86,19 +85,18 @@ function App() {
     }
   };
 
-  // --- NUEVA FUNCIÓN: ELIMINAR ---
+  // --- ELIMINAR ---
   const eliminarPunto = async () => {
-    if (!formulario.id) return; // Seguridad
+    if (!formulario.id) return; 
 
     const confirmar = window.confirm("⚠️ ¿Estás seguro de que quieres ELIMINAR este punto permanentemente?");
     
     if (confirmar) {
         try {
             await axios.delete(`${API_URL}${formulario.id}/`);
-            setShowModal(false); // Cerramos el modal
-            cargarPuntos();      // Recargamos el mapa
+            setShowModal(false); 
+            cargarPuntos();      
         } catch (error) {
-            console.error("Error eliminando:", error);
             alert("No se pudo eliminar el punto.");
         }
     }
@@ -148,10 +146,17 @@ function App() {
     );
   };
 
+  // Ayudante para color de barra
+  const getColorBarra = (valor) => {
+      if (valor >= 90) return 'danger';   // Rojo Crítico
+      if (valor >= 50) return 'warning';  // Amarillo Alerta
+      return 'success';                   // Verde Bien
+  };
+
   return (
     <div className="map-container">
       
-      {/* PANEL FLOTANTE */}
+      {/* PANEL SUPERIOR */}
       <div className="dashboard-panel">
         <div className="brand-title">
           <i className="bi bi-recycle text-success"></i> Reciclaje Pudú
@@ -196,7 +201,6 @@ function App() {
                     <button 
                         className="btn btn-sm btn-outline-secondary py-0 px-1" 
                         onClick={() => abrirEdicion(p)}
-                        title="Editar estado"
                     >
                         <i className="bi bi-pencil-square"></i>
                     </button>
@@ -215,7 +219,7 @@ function App() {
                 </div>
                 <ProgressBar 
                   now={p.estado_llenado} 
-                  variant={p.estado_llenado > 80 ? 'danger' : p.estado_llenado > 50 ? 'warning' : 'success'} 
+                  variant={getColorBarra(p.estado_llenado)} 
                   style={{ height: '6px' }} 
                   className="mb-3"
                 />
@@ -237,7 +241,7 @@ function App() {
         )}
       </MapContainer>
 
-      {/* MODAL (CREAR / EDITAR / ELIMINAR) */}
+      {/* MODAL */}
       <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static">
         <Modal.Header closeButton className="border-0 pb-0">
           <Modal.Title className="h5 fw-bold">
@@ -270,26 +274,34 @@ function App() {
             <Form.Group className="mb-3 p-3 bg-light rounded border">
               <div className="d-flex justify-content-between align-items-center mb-2">
                   <Form.Label className="small text-muted fw-bold mb-0">NIVEL ACTUAL</Form.Label>
-                  <span className={`badge ${formulario.estado_llenado > 80 ? 'bg-danger' : 'bg-success'}`}>
+                  {/* Etiqueta de color dinámica */}
+                  <span className={`badge bg-${getColorBarra(formulario.estado_llenado)}`}>
                       {formulario.estado_llenado}%
                   </span>
               </div>
+              
+              {/* --- AQUÍ ESTÁ EL CAMBIO PRINCIPAL --- */}
               <Form.Range 
                   min={0} 
                   max={100} 
+                  step={25} // <--- SALTOS DE 25 EN 25
                   value={formulario.estado_llenado}
-                  onChange={(e) => setFormulario({...formulario, estado_llenado: e.target.value})} 
+                  onChange={(e) => setFormulario({...formulario, estado_llenado: parseInt(e.target.value)})} 
               />
+              {/* ------------------------------------- */}
+
               <div className="d-flex justify-content-between small text-muted mt-1">
-                <span>Vacío (0%)</span>
-                <span>Crítico (100%)</span>
+                <span>0%</span>
+                <span>25%</span>
+                <span>50%</span>
+                <span>75%</span>
+                <span>100%</span>
               </div>
             </Form.Group>
           </Form>
         </Modal.Body>
         <Modal.Footer className="border-0 pt-0 d-flex justify-content-between">
           
-          {/* BOTÓN ELIMINAR (Solo visible si el punto ya existe, o sea tiene ID) */}
           {formulario.id && (
               <Button variant="danger" onClick={eliminarPunto}>
                   <i className="bi bi-trash"></i> Eliminar
