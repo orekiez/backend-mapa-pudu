@@ -1,3 +1,4 @@
+import threading # <--- IMPORTANTE: Importar esto
 from rest_framework import viewsets
 from django.core.mail import send_mail
 from django.utils import timezone
@@ -8,30 +9,40 @@ class PuntoViewSet(viewsets.ModelViewSet):
     queryset = PuntoReciclaje.objects.all()
     serializer_class = PuntoSerializer
 
-    # AL CREAR
     def perform_create(self, serializer):
         instancia = serializer.save()
-        # self.verificar_alerta(instancia)
+        self.verificar_alerta(instancia) # Ya no comentamos esto
 
-    # AL MODIFICAR
     def perform_update(self, serializer):
-        # Capturamos el dato que viene llegando
         try:
             nuevo_llenado = int(self.request.data.get('estado_llenado', 0))
         except:
             nuevo_llenado = serializer.instance.estado_llenado
 
-        # LÓGICA INTELIGENTE:
-        # Si el usuario puso 0% (Vaciado), reiniciamos el reloj a "AHORA"
         if nuevo_llenado == 0:
             instancia = serializer.save(fecha_ultimo_vaciado=timezone.now())
         else:
             instancia = serializer.save()
             
-        # Siempre verificamos si hay que mandar correo
-        #self.verificar_alerta(instancia)
+        self.verificar_alerta(instancia) # Ya no comentamos esto
 
-    # SISTEMA DE NOTIFICACIONES (GMAIL)
+    # --- FUNCIÓN AUXILIAR PARA EL HILO ---
+    def tarea_enviar_correo(self, asunto, mensaje, remitente, destinatario):
+        """Esta función se ejecuta en segundo plano (background)"""
+        try:
+            print("📨 Intentando enviar correo en segundo plano...")
+            send_mail(
+                asunto,
+                mensaje,
+                remitente,
+                destinatario,
+                fail_silently=False,
+            )
+            print("✅ Correo enviado con éxito.")
+        except Exception as e:
+            print(f"❌ Error enviando correo (pero no afectó al usuario): {e}")
+
+    # --- LÓGICA DE ALERTA ---
     def verificar_alerta(self, punto):
         if punto.estado_llenado >= 90:
             print(f"⚠️ ALERTA: Punto {punto.nombre} crítico ({punto.estado_llenado}%)")
@@ -47,14 +58,9 @@ class PuntoViewSet(viewsets.ModelViewSet):
             Sistema de Gestión Automático.
             """
             
-            try:
-                # Reemplaza con tus correos si es necesario, o usa los de settings
-                send_mail(
-                    asunto,
-                    mensaje,
-                    'tucorreo@gmail.com', # Remitente
-                    ['tucorreo@gmail.com'], # Destinatario
-                    fail_silently=True,
-                )
-            except Exception as e:
-                print(f"Error correo: {e}")
+            # AQUÍ ESTÁ LA MAGIA: Usamos threading
+            email_thread = threading.Thread(
+                target=self.tarea_enviar_correo,
+                args=(asunto, mensaje, 'mreinaldo818@gmail.com', ['mreinaldo818@gmail.com'])
+            )
+            email_thread.start() # Inicia el proceso y sigue de largo
